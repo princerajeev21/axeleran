@@ -1,0 +1,13 @@
+[local_host]
+localhost
+
+[local_host:vars]
+ssh_key_filename="ansible_file_new"
+remote_machine_username="root"
+remote_machine_password="Champion@21"
+ansible_user=Ansible1
+ansible_password=ansi@2121
+
+[ansible_setup_passwordless_setup_group]
+centos-1 ansible_port=22 ansible_user=root ansible_host=192.168.1.6
+centos-2 ansible_port=9022 ansible_user=root ansible_host=192.168.1.7

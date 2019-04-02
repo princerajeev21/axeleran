@@ -1,0 +1,7 @@
+#How to run commands?
+
+#to grant access to servers
+ansible-playbook -i hosts grant.yml
+
+#to grant access to servers
+ansible-playbook -i hosts revoke.yml

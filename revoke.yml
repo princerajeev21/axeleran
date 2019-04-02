@@ -1,0 +1,96 @@
+
+# Ansible playbook to revoke password less access to developer 
+
+
+---
+- hosts: local_host
+  gather_facts: false
+  vars:
+    ssh_key_content: ""
+  vars_prompt:
+    - name: confirmation
+      prompt: "Type 'YES' to ROLLBACK the passwordless login configuration to the remote hosts:"
+      default: 'NO'
+      private: no
+      when: confirmation != "YES"
+  pre_tasks:
+    - name: "Check Confirmation"
+      fail: msg="Exiting... You must type 'YES' to continue."
+      when: confirmation != "YES"
+
+  tasks:
+
+    #check if .ssh directory where .key file is stored exists or not
+    - name: check .ssh local directory exists
+      stat:
+        path: "~/.ssh"
+      register: ssh_directory_exists_check
+
+    
+    #check if .ssh key file exists at given location or not
+    - name: check .ssh key file exists
+      stat:
+        path: "~/.ssh/{{item}}"
+      register: ssh_key_file_exists_check
+      with_items:
+        - "{{ssh_key_filename}}"
+        - "{{ssh_key_filename}}.pub"
+
+    - name: fail if .ssh key is missing
+      fail:
+        msg: "the {{ssh_key_filename}}.pub was NOT found in .ssh folder"
+      when: ssh_key_file_exists_check.results[1].stat.exists == false
+
+   
+   
+    #remove the ssh key if it exists from location
+    - name: get ssh key to remove from the file
+      set_fact:
+        ssh_key_content: "{{ lookup('file', '~/.ssh/{{ssh_key_filename}}.pub') }}"
+    
+   
+    #Setup ansible passwordless group
+- hosts: ansible_setup_passwordless_setup_group
+  gather_facts: false
+  vars:
+    ssh_key_content_to_remove: "{{ hostvars['localhost'].ssh_key_content }}"
+  
+  tasks:
+
+    #delete the ssh key from all remote hosts
+    - name: delete the ssh key from the remote hosts
+      lineinfile:
+        path: ~/.ssh/authorized_keys
+        line: "{{ ssh_key_content_to_remove }}"
+        state: absent
+        backup: yes
+      register: ssh_key_removal_execution
+      
+    
+
+- hosts: localhost
+  gather_facts: false
+
+  tasks:
+
+    #delete key files from local server also
+    - name: delete the 2 key files from localhost
+      file:
+        path: "~/.ssh/{{ item }}"
+        state: absent
+      register: keys_deletion_execution
+      with_items: 
+        - "{{ssh_key_filename}}"
+        - "{{ssh_key_filename}}.pub"
+
+    
+    #clear/delete key file from config file
+    - name: clear the ~/.ssh/config file
+      lineinfile:
+        path: "~/.ssh/config"
+        line: "IdentityFile ~/.ssh/{{ssh_key_filename}}"
+        state: absent
+        backup: yes
+      register: ssh_config_file_key_deletion
+
+    
